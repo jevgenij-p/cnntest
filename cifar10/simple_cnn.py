@@ -83,6 +83,8 @@ def run_simple_net():
 
     with tf.name_scope("fully_connected"):
         full_1 = tf.nn.relu(full_layer(conv3_drop, 512))
+        tf.summary.histogram('activations', full_1)
+        
         full1_drop = tf.nn.dropout(full_1, keep_prob=keep_prob)
         y_conv = full_layer(full1_drop, 10)
 
@@ -126,75 +128,6 @@ def run_simple_net():
 
         test(sess, i)
 
-def build_second_net():
-    cifar = CifarDataManager()
-
-    x = tf.placeholder(tf.float32, shape=[None, 32, 32, 3])
-    y_ = tf.placeholder(tf.float32, shape=[None, 10])
-    keep_prob = tf.placeholder(tf.float32)
-
-    C1, C2, C3 = 32, 64, 128
-    F1 = 600
-
-    conv1_1 = conv_layer(x, shape=[3, 3, 3, C1])
-    conv1_2 = conv_layer(conv1_1, shape=[3, 3, C1, C1])
-    conv1_3 = conv_layer(conv1_2, shape=[3, 3, C1, C1])
-    conv1_pool = max_pool_2x2(conv1_3)
-    conv1_drop = tf.nn.dropout(conv1_pool, keep_prob=keep_prob)
-
-    conv2_1 = conv_layer(conv1_drop, shape=[3, 3, C1, C2])
-    conv2_2 = conv_layer(conv2_1, shape=[3, 3, C2, C2])
-    conv2_3 = conv_layer(conv2_2, shape=[3, 3, C2, C2])
-    conv2_pool = max_pool_2x2(conv2_3)
-    conv2_drop = tf.nn.dropout(conv2_pool, keep_prob=keep_prob)
-
-    conv3_1 = conv_layer(conv2_drop, shape=[3, 3, C2, C3])
-    conv3_2 = conv_layer(conv3_1, shape=[3, 3, C3, C3])
-    conv3_3 = conv_layer(conv3_2, shape=[3, 3, C3, C3])
-    conv3_pool = tf.nn.max_pool(conv3_3, ksize=[1, 8, 8, 1], strides=[1, 8, 8, 1], padding='SAME')
-    conv3_flat = tf.reshape(conv3_pool, [-1, C3])
-    conv3_drop = tf.nn.dropout(conv3_flat, keep_prob=keep_prob)
-
-    full1 = tf.nn.relu(full_layer(conv3_drop, F1))
-    full1_drop = tf.nn.dropout(full1, keep_prob=keep_prob)
-
-    y_conv = full_layer(full1_drop, 10)
-
-    with tf.name_scope("loss"):
-        cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=y_conv,
-                                                                               labels=y_))
-    with tf.name_scope("optimizer"):
-        train_step = tf.train.AdamOptimizer(5e-4).minimize(cross_entropy)
-
-    with tf.name_scope("summaries"):
-        tf.summary.scalar("loss", cross_entropy)
-        merged = tf.summary.merge_all()
-
-    correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-
-    def test(sess, step):
-        X = cifar.test.images.reshape(10, 1000, 32, 32, 3)
-        Y = cifar.test.labels.reshape(10, 1000, 10)
-        acc = np.mean([sess.run(accuracy, feed_dict={x: X[i], y_: Y[i], keep_prob: 1.0})
-                       for i in range(10)])
-        print("Step {0}, Accuracy: {1:.4}%".format(step, acc * 100))
-
-    train_writer = tf.summary.FileWriter(LOG_PATH, tf.get_default_graph())
-
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-
-        for i in range(STEPS):
-            batch = cifar.train.next_batch(BATCH_SIZE)
-            _, summary = sess.run([train_step, merged], feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
-
-            if i % 500 == 0:
-                test(sess, i)
-                train_writer.add_summary(summary, i)
-
-        test(sess, i)
-
 def main():
     if tf.gfile.Exists(LOG_PATH):
         tf.gfile.DeleteRecursively(LOG_PATH)
@@ -203,4 +136,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    # build_second_net()

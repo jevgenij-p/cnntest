@@ -19,10 +19,13 @@ def conv_layer(input, shape):
     with tf.name_scope("weights"):
         W = weight_variable(shape)
         variable_summaries(W)
+        # kernel_visualization(W)
     with tf.name_scope("biases"):
         b = bias_variable([shape[3]])
         variable_summaries(b)
-    return tf.nn.relu(conv2d(input, W) + b)
+    activations = tf.nn.relu(conv2d(input, W) + b)
+    # tf.summary.histogram("activations", activations)
+    return activations
 
 def full_layer(input, size):
     in_size = int(input.get_shape()[1])
@@ -45,3 +48,19 @@ def variable_summaries(var):
         tf.summary.scalar('max', tf.reduce_max(var))
         tf.summary.scalar('min', tf.reduce_min(var))
         tf.summary.histogram('histogram', var)
+
+def kernel_visualization(kernel):
+    channels = int(kernel.get_shape()[2])
+    if (channels != 1 and channels != 3):
+        return
+    with tf.variable_scope('visualization'):
+        # scale weights to [0 1]
+        x_min = tf.reduce_min(kernel)
+        x_max = tf.reduce_max(kernel)
+        kernel_0_to_1 = (kernel - x_min) / (x_max - x_min)
+
+        # to tf.image_summary format [batch_size, height, width, channels]
+        kernel_transposed = tf.transpose(kernel_0_to_1, [3, 0, 1, 2])
+
+        # this will display random 3 filters from the 64 in conv1
+        tf.summary.image('filters', kernel_transposed, max_outputs=3)
