@@ -19,7 +19,7 @@ def conv_layer(input, shape):
     with tf.name_scope("weights"):
         W = weight_variable(shape)
         variable_summaries(W)
-        # kernel_visualization(W)
+        kernel_visualization(W)
     with tf.name_scope("biases"):
         b = bias_variable([shape[3]])
         variable_summaries(b)
