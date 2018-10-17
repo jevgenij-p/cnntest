@@ -69,6 +69,8 @@ def run_simple_net():
                        for i in range(10)])
         print("Step {0}, Accuracy: {1:.4}%".format(step, acc * 100))
 
+    sess = tf.InteractiveSession()
+
     with tf.name_scope("placeholders"):
         x = tf.placeholder(tf.float32, shape=[None, 32, 32, 3])
         y_ = tf.placeholder(tf.float32, shape=[None, 10])
@@ -113,20 +115,30 @@ def run_simple_net():
     tf.summary.scalar("accuracy", accuracy)
 
     merged = tf.summary.merge_all()
-    train_writer = tf.summary.FileWriter(LOG_PATH, tf.get_default_graph())
+    train_writer = tf.summary.FileWriter(LOG_PATH, sess.graph)
 
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
+    sess.run(tf.global_variables_initializer())
 
-        for i in range(STEPS):
-            batch = cifar.train.next_batch(BATCH_SIZE)
+    for i in range(STEPS):
+        batch = cifar.train.next_batch(BATCH_SIZE)
+
+        if i % 500 == 0:
+            run_options = tf.RunOptions(trace_level=3)
+            run_metadata = tf.RunMetadata()
+            _, summary = sess.run([train_step, merged], 
+                                  feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5},
+                                  options=run_options,
+                                  run_metadata=run_metadata)
+            train_writer.add_run_metadata(run_metadata, 'step%d' % i)
+        else:
             _, summary = sess.run([train_step, merged], feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
 
-            if i % 500 == 0:
-                test(sess, i)
-                train_writer.add_summary(summary, i)
+        if i % 500 == 0:
+            test(sess, i)
+            train_writer.add_summary(summary, i)
 
-        test(sess, i)
+    test(sess, i)
+    train_writer.close()
 
 def main():
     if tf.gfile.Exists(LOG_PATH):
