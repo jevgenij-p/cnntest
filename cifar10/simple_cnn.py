@@ -62,6 +62,13 @@ class CifarDataManager(object):
 def run_simple_net():
     cifar = CifarDataManager()
 
+    def test(sess, step):
+        X = cifar.test.images.reshape(10, 1000, 32, 32, 3)
+        Y = cifar.test.labels.reshape(10, 1000, 10)
+        acc = np.mean([sess.run(accuracy, feed_dict={x: X[i], y_: Y[i], keep_prob: 1.0})
+                       for i in range(10)])
+        print("Step {0}, Accuracy: {1:.4}%".format(step, acc * 100))
+
     with tf.name_scope("placeholders"):
         x = tf.placeholder(tf.float32, shape=[None, 32, 32, 3])
         y_ = tf.placeholder(tf.float32, shape=[None, 10])
@@ -104,13 +111,6 @@ def run_simple_net():
             accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
     tf.summary.scalar("accuracy", accuracy)
-
-    def test(sess, step):
-        X = cifar.test.images.reshape(10, 1000, 32, 32, 3)
-        Y = cifar.test.labels.reshape(10, 1000, 10)
-        acc = np.mean([sess.run(accuracy, feed_dict={x: X[i], y_: Y[i], keep_prob: 1.0})
-                       for i in range(10)])
-        print("Step {0}, Accuracy: {1:.4}%".format(step, acc * 100))
 
     merged = tf.summary.merge_all()
     train_writer = tf.summary.FileWriter(LOG_PATH, tf.get_default_graph())

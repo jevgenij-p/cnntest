@@ -23,9 +23,7 @@ def conv_layer(input, shape):
     with tf.name_scope("biases"):
         b = bias_variable([shape[3]])
         variable_summaries(b)
-    activations = tf.nn.relu(conv2d(input, W) + b)
-    # tf.summary.histogram("activations", activations)
-    return activations
+    return tf.nn.relu(conv2d(input, W) + b)
 
 def full_layer(input, size):
     in_size = int(input.get_shape()[1])
@@ -38,7 +36,7 @@ def full_layer(input, size):
     return tf.matmul(input, W) + b
 
 def variable_summaries(var):
-    """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
+    """Attach summaries for TensorBoard visualization."""
     with tf.name_scope('summaries'):
         mean = tf.reduce_mean(var)
         tf.summary.scalar('mean', mean)
@@ -50,17 +48,22 @@ def variable_summaries(var):
         tf.summary.histogram('histogram', var)
 
 def kernel_visualization(kernel):
+    channel = None
     channels = int(kernel.get_shape()[2])
-    if (channels != 1 and channels != 3):
-        return
-    with tf.variable_scope('visualization'):
+    if (channels == 1 or channels == 3):
+        channel = tf.Variable(kernel)
+    else:
+        channel = tf.slice(kernel, [0,0,0,0], 
+            [tf.shape(kernel)[0], tf.shape(kernel)[1], 1, tf.shape(kernel)[3]])
+
+    with tf.variable_scope("visualization"):
         # scale weights to [0 1]
-        x_min = tf.reduce_min(kernel)
-        x_max = tf.reduce_max(kernel)
-        kernel_0_to_1 = (kernel - x_min) / (x_max - x_min)
+        x_min = tf.reduce_min(channel)
+        x_max = tf.reduce_max(channel)
+        channel_scaled = (channel - x_min) / (x_max - x_min)
 
         # to tf.image_summary format [batch_size, height, width, channels]
-        kernel_transposed = tf.transpose(kernel_0_to_1, [3, 0, 1, 2])
+        channel_transposed = tf.transpose(channel_scaled, [3, 0, 1, 2])
 
         # this will display random 3 filters from the 64 in conv1
-        tf.summary.image('filters', kernel_transposed, max_outputs=3)
+        tf.summary.image('filters', channel_transposed, max_outputs=3)
